@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="">
+
+<head>
+  <meta charset="utf-8">
+  <title>D3.js map example | Taiwan and world continents</title>
+  <meta name="author" content="Ally Chen">
+  <meta name="description" content="Taiwan and world continents map by d3.js">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    .map-wrap {
+      position: relative;
+    }
+
+    .map-wrap .text {
+      position: absolute;
+      width: 100%;
+      top: 0;
+      left: 0;
+      color: #212121;
+    }
+    .tw{border-bottom: 1px solid #d2d2d2;}
+    @media (min-width:1024px) {
+      main{
+        display: flex;
+      }
+      .tw{flex: 1;border-right: 1px solid #d2d2d2;border-bottom: 0}
+      .world{flex: 2}
+      .map-wrap .text{top: auto;bottom: 0;text-align: center}
+    }
+
+    .d3-map {
+      position: relative;
+    }
+
+    .d3-map:before {
+      content: '';
+      display: block;
+      min-height: 400px;
+      width: 100%;
+      padding-bottom: 40%;
+    }
+
+    #map2:before {
+      min-height: 300px;
+    }
+
+    .d3-map svg {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      width: 100%;
+    }
+
+    .d3-map path {
+      fill: transparent;
+      stroke: #8d8d8d;
+      cursor: pointer;
+      transition: fill .2s ease, stroke .2s ease, transform .2s ease;
+    }
+
+    .d3-map path:hover {
+      fill: #ffcece;
+      stroke: #de7d7d;
+    }
+
+    .d3-map path.active {
+      fill: #ef9e9e;
+      stroke: #de7d7d;
+    }
+  </style>
+</head>
+
+<body>
+  <header></header>
+  <main>
+    <div class="map-wrap tw">
+      <div class="text">
+        <h2>hover: <span id="hover-area"></span></h2>
+        <h3>active: <span id="selected-area"></span></h3>
+      </div>
+      <div class="d3-map" id="map">
+        <svg id="svg" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+    </div>
+    <div class="map-wrap world">
+      
+      <div class="text">
+        <h2>hover: <span id="hover-area2"></span></h2>
+        <h3>active: <span id="selected-area2"></span></h3>
+      </div>
+      <div class="d3-map" id="map2">
+        <svg id="svg2" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+    </div>
+
+  </main>
+  <footer></footer>
+  <script src="assets/jquery-3.4.1.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js"></script>
+  <script src="https://d3js.org/topojson.v1.min.js"></script>
+  <script src="http://d3js.org/d3.geo.projection.v0.min.js"></script>
+
+  <script>
+    iniMap()
+
+    function iniMap() {
+      const width = ($("#map").width()).toFixed(),
+        height = ($("#map").height()).toFixed();
+
+      let mercatorScale = 15 * height;
+
+      var path = d3.geo.path().projection(
+        // !important 座標變換函式
+        d3.geo
+        .mercator()
+        .center([121, 24])
+        .scale(mercatorScale)
+        .translate([width / 2, height / 2.5])
+      );
+
+      var svg = d3.select('#svg')
+        .attr('width', width)
+        .attr('height', height)
+        .attr('viewBox', `0 0 ${width} ${height}`);
+
+      d3.json('assets/map/tw.json', (error, geometry) => {
+        if (error) throw error;
+        svg
+          .selectAll('path')
+          .data(geometry.features)
+          .enter().append('path')
+          .attr('d', path)
+          .attr({
+            class: (d) => 'city-' + d.properties.COUNTYCODE,
+            title: (d) => d.properties.COUNTYNAME
+          })
+          .on('mouseover', d => {
+            $("#hover-area").html(d.properties.COUNTYNAME);
+          })
+          .on('click', d => getStores(d.properties));
+      });
+    }
+
+    function getStores(p) {
+      $("#selected-area").html(p.COUNTYNAME);
+      $('#svg .active').removeClass('active');
+      $('.city-' + p.COUNTYCODE).addClass('active');
+      $('.city-' + p.COUNTYCODE + ' h3').html(p.COUNTYNAME);
+
+      //ajax 寫這
+
+    }
+  </script>
+
+  <script>
+    iniMap2()
+
+    function iniMap2() {
+      const width = ($("#map2").width()).toFixed(),
+        height = ($("#map2").height()).toFixed();
+
+      let mercatorScale = width * 0.15;
+      if ($(window).width() < 480) {
+        mercatorScale = width * 0.22
+      }
+      var path = d3.geo.path().projection(
+        // !important 座標變換函式
+        d3.geo
+        .equirectangular()
+        .center([0, 0])
+        .scale(mercatorScale)
+        .translate([width / 2, height / 1.75])
+      );
+
+      var svg = d3.select('#svg2')
+        .attr('width', width)
+        .attr('height', height)
+        .attr('viewBox', `0 0 ${width} ${height}`);
+
+      d3.json('assets/map/continent.json', (error, topology) => {
+        if (error) throw error;
+
+        var geojson = topojson.feature(topology, topology.objects.continent);
+
+        svg
+          .selectAll('path')
+          .data(geojson.features)
+          .enter().append('path')
+          .attr('d', path)
+          .attr({
+            class: (d) => 'continent-' + d.properties.code,
+            title: (d) => d.properties.CONTINENT
+          })
+          .on('mouseover', d => {
+            $("#hover-area2").html(d.properties.CONTINENT);
+          })
+          .on('click', d => getStores2(d.properties));
+      });
+    }
+
+    function getStores2(p) {
+      $("#selected-area2").html(p.CONTINENT);
+      $('#svg2 .active').removeClass('active');
+      $('.continent-' + p.code).addClass('active');
+      $('.continent-' + p.code + ' h3').html(p.CONTINENT);
+
+      //ajax 寫這
+
+    }
+  </script>
+</body>
+
+</html>
